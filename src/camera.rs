@@ -2,7 +2,7 @@ use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
 use bevy::render::camera::Projection;
 
-// Taken from "Pan-orbit-camera" from the Bevy Cheat Book (https://bevy-cheatbook.github.io/cookbook/pan-orbit-camera.html), updated to bevy 0.12
+// Updated & modified version of the "Pan-orbit-camera" from the Bevy Cheat Book (https://bevy-cheatbook.github.io/cookbook/pan-orbit-camera.html).
 
 /// Tags an entity as capable of panning and orbiting.
 #[derive(Component)]
@@ -104,7 +104,7 @@ pub fn pan_orbit_camera(
         let mut any = false;
         if rotation_move.length_squared() > 0.0 {
             any = true;
-            let window_size = get_primary_window_size(&window);
+            let window_size = get_window_size(&window);
             let delta_x = {
                 let delta = rotation_move.x / window_size.x * std::f32::consts::PI * 2.0;
                 if pan_orbit.upside_down {
@@ -121,7 +121,7 @@ pub fn pan_orbit_camera(
         } else if pan.length_squared() > 0.0 {
             any = true;
             // make panning distance independent of resolution and FOV,
-            let window_size = get_primary_window_size(&window);
+            let window_size = get_window_size(&window);
             if let Projection::Perspective(projection) = projection {
                 pan *= Vec2::new(projection.fov * projection.aspect_ratio, projection.fov)
                     / window_size;
@@ -154,6 +154,6 @@ pub fn pan_orbit_camera(
     ev_motion.clear();
 }
 
-fn get_primary_window_size(window: &Window) -> Vec2 {
+fn get_window_size(window: &Window) -> Vec2 {
     Vec2::new(window.width() as f32, window.height() as f32)
 }
