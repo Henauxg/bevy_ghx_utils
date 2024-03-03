@@ -1,6 +1,6 @@
 [package]
 name = "bevy_ghx_utils"
-version = "0.1.0"
+version = "0.2.0"
 description = "Simple shared bevy utilities"
 repository = "https://github.com/Henauxg/bevy_ghx_utils"
 documentation = "https://docs.rs/bevy_ghx_utils"
@@ -19,4 +19,4 @@ pan-orbit-camera = [
 ]
 
 [dependencies]
-bevy = { version = "0.12.0", default-features = false, features = [] }
+bevy = { version = "0.13.0", default-features = false, features = [] }
