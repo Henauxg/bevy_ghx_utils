@@ -1,7 +1,5 @@
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
-use bevy::render::camera::Projection;
-
 // Updated & modified version of the "Pan-orbit-camera" from the Bevy Cheat Book (https://bevy-cheatbook.github.io/cookbook/pan-orbit-camera.html).
 
 /// Tags an entity as capable of panning and orbiting.
@@ -48,7 +46,7 @@ pub fn toggle_auto_orbit(mut pan_orbit_camera: Query<&mut PanOrbitCamera>) {
 }
 
 /// Pan the camera with middle mouse click, zoom with scroll wheel, orbit with right mouse click.
-pub fn pan_orbit_camera(
+pub fn update_pan_orbit_camera(
     window: Query<&Window>,
     mut ev_motion: EventReader<MouseMotion>,
     mut ev_scroll: EventReader<MouseWheel>,
