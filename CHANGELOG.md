@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.3.0 (TODO)
+## Version 0.3.0 (2024-05-16)
 
 - Added `toggle_visibility` generic util system
 - Renamed `pan_orbit_camera` to `update_pan_orbit_camera`

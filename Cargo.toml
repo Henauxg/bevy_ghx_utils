@@ -1,6 +1,6 @@
 [package]
 name = "bevy_ghx_utils"
-version = "0.3.0-dev"
+version = "0.3.0"
 description = "Simple shared bevy utilities"
 repository = "https://github.com/Henauxg/bevy_ghx_utils"
 documentation = "https://docs.rs/bevy_ghx_utils"

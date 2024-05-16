@@ -2,6 +2,7 @@
 
 # Bevy Ghx Utils
 
+[![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
 [![bevy_ghx_utils on crates.io](https://img.shields.io/crates/v/bevy_ghx_utils)](https://crates.io/crates/bevy_ghx_utils)
 [![bevy_ghx_utils on doc.rs](https://docs.rs/bevy_ghx_utils/badge.svg)](https://docs.rs/bevy_ghx_utils)
 
@@ -17,10 +18,10 @@ Small utilities for the [`Bevy`](https://github.com/bevyengine/bevy) engine, sha
 
 ## Compatible Bevy versions
 
-| `bevy_ghx_utils` | `bevy` |
-| :--------------- | :----- |
-| `0.2`            | `0.13` |
-| `0.1`            | `0.12` |
+| bevy_ghx_utils | bevy |
+| :------------- | :--- |
+| 0.2-0.3        | 0.13 |
+| 0.1            | 0.12 |
 
 ## License
 
