@@ -14,12 +14,13 @@ Small utilities for the [`Bevy`](https://github.com/bevyengine/bevy) engine, sha
 
 *Find the list and description in [cargo.toml](./Cargo.toml)*
 
-- `pan-orbit-camera` *[default]*: compiles a 3d pan-orbit camera. Updated & modified version of the pan orbit camera found int the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/cookbook/pan-orbit-camera.html)
+- `pan-orbit-camera` *[default]*: compiles a 3d pan-orbit camera. Updated & modified version of the pan orbit camera found in the [Unofficial bevy Cheatbook](https://bevy-cheatbook.github.io/cookbook/pan-orbit-camera.html) made by [@Inodentry](https://github.com/inodentry)
 
 ## Compatible Bevy versions
 
 | bevy_ghx_utils | bevy |
 | :------------- | :--- |
+| 0.4            | 0.14 |
 | 0.2-0.3        | 0.13 |
 | 0.1            | 0.12 |
 
