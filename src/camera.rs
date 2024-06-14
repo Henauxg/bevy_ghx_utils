@@ -1,28 +1,94 @@
-use bevy::input::mouse::{MouseMotion, MouseWheel};
-use bevy::prelude::*;
+use std::f32::consts::{FRAC_PI_2, PI, TAU};
+
+use bevy::{
+    input::{
+        mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
+        ButtonInput,
+    },
+    math::{EulerRot, Quat, Vec2, Vec3},
+    prelude::{Bundle, Camera3dBundle, Component, DetectChanges, EventReader, KeyCode, Query, Res},
+    transform::components::Transform,
+};
+
 // Updated & modified version of the "Pan-orbit-camera" from the Bevy Cheat Book (https://bevy-cheatbook.github.io/cookbook/pan-orbit-camera.html).
 
-/// Tags an entity as capable of panning and orbiting.
+// Bundle to spawn our custom camera easily
+#[derive(Bundle, Default)]
+pub struct PanOrbitCameraBundle {
+    pub camera: Camera3dBundle,
+    pub state: PanOrbitState,
+    pub settings: PanOrbitSettings,
+}
+
+// The internal state of the pan-orbit controller
 #[derive(Component)]
-pub struct PanOrbitCamera {
-    /// The "focus point" to orbit around. It is automatically updated when panning the camera
-    pub focus: Vec3,
+pub struct PanOrbitState {
+    pub center: Vec3,
     pub radius: f32,
     pub upside_down: bool,
+    pub pitch: f32,
+    pub yaw: f32,
+}
+impl Default for PanOrbitState {
+    fn default() -> Self {
+        PanOrbitState {
+            center: Vec3::ZERO,
+            radius: 1.0,
+            upside_down: false,
+            pitch: 0.0,
+            yaw: 0.0,
+        }
+    }
+}
+
+/// The configuration of the pan-orbit controller
+#[derive(Component)]
+pub struct PanOrbitSettings {
+    /// World units per pixel of mouse motion
+    pub pan_sensitivity: f32,
+    /// Radians per pixel of mouse motion
+    pub orbit_sensitivity: f32,
+    /// Exponent per pixel of mouse motion
+    pub zoom_sensitivity: f32,
+    /// Key to hold for panning
+    pub pan_key: Option<KeyCode>,
+    /// Key to hold for orbiting
+    pub orbit_key: Option<KeyCode>,
+    /// Key to hold for zooming
+    pub zoom_key: Option<KeyCode>,
+    /// What action is bound to the scroll wheel?
+    pub scroll_action: Option<PanOrbitAction>,
+    /// For devices with a notched scroll wheel, like desktop mice
+    pub scroll_line_sensitivity: f32,
+    /// For devices with smooth scrolling, like touchpads
+    pub scroll_pixel_sensitivity: f32,
+
     pub auto_orbit: bool,
     pub auto_orbit_factor: f32,
 }
-
-impl Default for PanOrbitCamera {
+impl Default for PanOrbitSettings {
     fn default() -> Self {
-        PanOrbitCamera {
-            focus: Vec3::ZERO,
-            radius: 5.0,
-            upside_down: false,
+        PanOrbitSettings {
+            pan_sensitivity: 0.001,                 // 1000 pixels per world unit
+            orbit_sensitivity: 0.1f32.to_radians(), // 0.1 degree per pixel
+            zoom_sensitivity: 0.01,
+            pan_key: Some(KeyCode::ControlLeft),
+            orbit_key: Some(KeyCode::AltLeft),
+            zoom_key: Some(KeyCode::ShiftLeft),
+            scroll_action: Some(PanOrbitAction::Zoom),
+            scroll_line_sensitivity: 16.0, // 1 "line" == 16 "pixels of motion"
+            scroll_pixel_sensitivity: 1.0,
             auto_orbit: true,
             auto_orbit_factor: 0.3,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PanOrbitAction {
+    Pan,
+    Orbit,
+    Zoom,
 }
 
 /// Toggles the PanOrbitCamera auto orbit
@@ -36,7 +102,7 @@ impl Default for PanOrbitCamera {
 ///    toggle_auto_orbit.run_if(input_just_pressed(KeyCode::F1)),
 ///  );
 /// ```
-pub fn toggle_auto_orbit(mut pan_orbit_camera: Query<&mut PanOrbitCamera>) {
+pub fn toggle_auto_orbit(mut pan_orbit_camera: Query<&mut PanOrbitSettings>) {
     match pan_orbit_camera.get_single_mut() {
         Ok(mut cam) => {
             cam.auto_orbit = !cam.auto_orbit;
@@ -45,113 +111,168 @@ pub fn toggle_auto_orbit(mut pan_orbit_camera: Query<&mut PanOrbitCamera>) {
     }
 }
 
-/// Pan the camera with middle mouse click, zoom with scroll wheel, orbit with right mouse click.
 pub fn update_pan_orbit_camera(
-    window: Query<&Window>,
-    mut ev_motion: EventReader<MouseMotion>,
-    mut ev_scroll: EventReader<MouseWheel>,
-    input_mouse: Res<ButtonInput<MouseButton>>,
-    mut query: Query<(&mut PanOrbitCamera, &mut Transform, &Projection)>,
+    kbd: Res<ButtonInput<KeyCode>>,
+    mut evr_motion: EventReader<MouseMotion>,
+    mut evr_scroll: EventReader<MouseWheel>,
+    mut q_camera: Query<(&PanOrbitSettings, &mut PanOrbitState, &mut Transform)>,
 ) {
-    let window = window.single();
+    // First, accumulate the total amount of
+    // mouse motion and scroll, from all pending events:
+    let mut total_motion: Vec2 = evr_motion.read().map(|ev| ev.delta).sum();
 
-    // change input mapping for orbit and panning here
-    let orbit_button = MouseButton::Right;
-    let pan_button = MouseButton::Middle;
+    // Reverse Y (Bevy's Worldspace coordinate system is Y-Up,
+    // but events are in window/ui coordinates, which are Y-Down)
+    total_motion.y = -total_motion.y;
 
-    let mut pan = Vec2::ZERO;
-    let mut rotation_move = Vec2::ZERO;
-    let mut scroll = 0.0;
-    let mut orbit_button_changed = false;
-
-    let mut orbit_or_pan = false;
-    if input_mouse.pressed(orbit_button) {
-        for ev in ev_motion.read() {
-            rotation_move += ev.delta;
+    let mut total_scroll_lines = Vec2::ZERO;
+    let mut total_scroll_pixels = Vec2::ZERO;
+    for ev in evr_scroll.read() {
+        match ev.unit {
+            MouseScrollUnit::Line => {
+                total_scroll_lines.x += ev.x;
+                total_scroll_lines.y -= ev.y;
+            }
+            MouseScrollUnit::Pixel => {
+                total_scroll_pixels.x += ev.x;
+                total_scroll_pixels.y -= ev.y;
+            }
         }
-        orbit_or_pan = true;
-    } else if input_mouse.pressed(pan_button) {
-        // Pan only if we're not rotating at the moment
-        for ev in ev_motion.read() {
-            pan += ev.delta;
+    }
+
+    for (settings, mut state, mut transform) in &mut q_camera {
+        // Check how much of each thing we need to apply.
+        // Accumulate values from motion and scroll,
+        // based on our configuration settings.
+
+        let mut total_pan = Vec2::ZERO;
+        if settings
+            .pan_key
+            .map(|key| kbd.pressed(key))
+            .unwrap_or(false)
+        {
+            total_pan -= total_motion * settings.pan_sensitivity;
         }
-        orbit_or_pan = true;
-    }
+        if settings.scroll_action == Some(PanOrbitAction::Pan) {
+            total_pan -=
+                total_scroll_lines * settings.scroll_line_sensitivity * settings.pan_sensitivity;
+            total_pan -=
+                total_scroll_pixels * settings.scroll_pixel_sensitivity * settings.pan_sensitivity;
+        }
 
-    for ev in ev_scroll.read() {
-        scroll += ev.y;
-    }
+        let mut total_orbit = Vec2::ZERO;
+        if settings
+            .orbit_key
+            .map(|key| kbd.pressed(key))
+            .unwrap_or(false)
+        {
+            total_orbit -= total_motion * settings.orbit_sensitivity;
+        }
+        if settings.scroll_action == Some(PanOrbitAction::Orbit) {
+            total_orbit -=
+                total_scroll_lines * settings.scroll_line_sensitivity * settings.orbit_sensitivity;
+            total_orbit -= total_scroll_pixels
+                * settings.scroll_pixel_sensitivity
+                * settings.orbit_sensitivity;
+        }
 
-    if input_mouse.just_released(orbit_button) || input_mouse.just_pressed(orbit_button) {
-        orbit_button_changed = true;
-    }
+        let mut total_zoom = Vec2::ZERO;
+        if settings
+            .zoom_key
+            .map(|key| kbd.pressed(key))
+            .unwrap_or(false)
+        {
+            total_zoom -= total_motion * settings.zoom_sensitivity;
+        }
+        if settings.scroll_action == Some(PanOrbitAction::Zoom) {
+            total_zoom -=
+                total_scroll_lines * settings.scroll_line_sensitivity * settings.zoom_sensitivity;
+            total_zoom -=
+                total_scroll_pixels * settings.scroll_pixel_sensitivity * settings.zoom_sensitivity;
+        }
 
-    for (mut pan_orbit, mut transform, projection) in query.iter_mut() {
-        if orbit_button_changed {
-            // only check for upside down when orbiting started or ended this frame
-            // if the camera is "upside" down, panning horizontally would be inverted, so invert the input to make it correct
-            let up = transform.rotation * Vec3::Y;
-            pan_orbit.upside_down = up.y <= 0.0;
+        // Upon starting a new orbit maneuver (key is just pressed),
+        // check if we are starting it upside-down
+        if settings
+            .orbit_key
+            .map(|key| kbd.just_pressed(key))
+            .unwrap_or(false)
+        {
+            state.upside_down = state.pitch < -FRAC_PI_2 || state.pitch > FRAC_PI_2;
+        }
+
+        // If we are upside down, reverse the X orbiting
+        if state.upside_down {
+            total_orbit.x = -total_orbit.x;
+        }
+
+        // Now we can actually do the things!
+
+        let mut any_change = false;
+
+        // To ZOOM, we need to multiply our radius.
+        if total_zoom != Vec2::ZERO {
+            any_change = true;
+            // in order for zoom to feel intuitive,
+            // everything needs to be exponential
+            // (done via multiplication)
+            // not linear
+            // (done via addition)
+
+            // so we compute the exponential of our
+            // accumulated value and multiply by that
+            state.radius *= (-total_zoom.y).exp();
+        }
+
+        // To PAN, we can get the UP and RIGHT direction
+        // vectors from the camera's transform, and use
+        // them to move the center point. Multiply by the
+        // radius to make the pan adapt to the current zoom.
+        if total_pan != Vec2::ZERO {
+            any_change = true;
+            let radius = state.radius;
+            state.center += transform.right() * total_pan.x * radius;
+            state.center += transform.up() * total_pan.y * radius;
+        }
+
+        if total_orbit != Vec2::ZERO {
+            any_change = true;
         }
 
         // Only auto-orbit when there is no user input
-        if pan_orbit.auto_orbit && scroll == 0. && !orbit_or_pan {
-            rotation_move.x += pan_orbit.auto_orbit_factor;
+        if settings.auto_orbit && !any_change {
+            total_orbit.x += settings.auto_orbit_factor;
         }
 
-        let mut any = false;
-        if rotation_move.length_squared() > 0.0 {
-            any = true;
-            let window_size = get_window_size(&window);
-            let delta_x = {
-                let delta = rotation_move.x / window_size.x * std::f32::consts::PI * 2.0;
-                if pan_orbit.upside_down {
-                    -delta
-                } else {
-                    delta
-                }
-            };
-            let delta_y = rotation_move.y / window_size.y * std::f32::consts::PI;
-            let yaw = Quat::from_rotation_y(-delta_x);
-            let pitch = Quat::from_rotation_x(-delta_y);
-            transform.rotation = yaw * transform.rotation; // rotate around global y axis
-            transform.rotation = transform.rotation * pitch; // rotate around local x axis
-        } else if pan.length_squared() > 0.0 {
-            any = true;
-            // make panning distance independent of resolution and FOV,
-            let window_size = get_window_size(&window);
-            if let Projection::Perspective(projection) = projection {
-                pan *= Vec2::new(projection.fov * projection.aspect_ratio, projection.fov)
-                    / window_size;
+        // To ORBIT, we change our pitch and yaw values
+        if total_orbit != Vec2::ZERO {
+            state.yaw += total_orbit.x;
+            state.pitch += total_orbit.y;
+            // wrap around, to stay between +- 180 degrees
+            if state.yaw > PI {
+                state.yaw -= TAU; // 2 * PI
             }
-            // translate by local axes
-            let right = transform.rotation * Vec3::X * -pan.x;
-            let up = transform.rotation * Vec3::Y * pan.y;
-            // make panning proportional to distance away from focus point
-            let translation = (right + up) * pan_orbit.radius;
-            pan_orbit.focus += translation;
-        } else if scroll.abs() > 0.0 {
-            any = true;
-            pan_orbit.radius -= scroll * pan_orbit.radius * 0.2;
-            // dont allow zoom to reach zero or you get stuck
-            pan_orbit.radius = f32::max(pan_orbit.radius, 0.05);
+            if state.yaw < -PI {
+                state.yaw += TAU; // 2 * PI
+            }
+            if state.pitch > PI {
+                state.pitch -= TAU; // 2 * PI
+            }
+            if state.pitch < -PI {
+                state.pitch += TAU; // 2 * PI
+            }
         }
 
-        if any {
-            // emulating parent/child to make the yaw/y-axis rotation behave like a turntable
-            // parent = x and y rotation
-            // child = z-offset
-            let rot_matrix = Mat3::from_quat(transform.rotation);
-            transform.translation =
-                pan_orbit.focus + rot_matrix.mul_vec3(Vec3::new(0.0, 0.0, pan_orbit.radius));
+        // Finally, compute the new camera transform.
+        // (if we changed anything, or if the pan-orbit
+        // controller was just added and thus we are running
+        // for the first time and need to initialize)
+        if any_change || state.is_added() {
+            // YXZ Euler Rotation performs yaw/pitch/roll.
+            transform.rotation = Quat::from_euler(EulerRot::YXZ, state.yaw, state.pitch, 0.0);
+            // To position the camera, get the backward direction vector
+            // and place the camera at the desired radius from the center.
+            transform.translation = state.center + transform.back() * state.radius;
         }
     }
-
-    // consume any remaining events, so they don't pile up if we don't need them
-    // (and also to avoid Bevy warning us about not checking events every frame update)
-    ev_motion.clear();
-}
-
-fn get_window_size(window: &Window) -> Vec2 {
-    Vec2::new(window.width() as f32, window.height() as f32)
 }
