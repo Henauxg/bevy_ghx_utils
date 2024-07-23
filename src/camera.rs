@@ -5,6 +5,7 @@ use bevy::{
         mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
         ButtonInput,
     },
+    log::info,
     math::{EulerRot, Quat, Vec2, Vec3},
     prelude::{Bundle, Camera3dBundle, Component, DetectChanges, EventReader, KeyCode, Query, Res},
     transform::components::Transform,
@@ -21,7 +22,7 @@ pub struct PanOrbitCameraBundle {
 }
 
 // The internal state of the pan-orbit controller
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct PanOrbitState {
     pub center: Vec3,
     pub radius: f32,
@@ -42,7 +43,7 @@ impl Default for PanOrbitState {
 }
 
 /// The configuration of the pan-orbit controller
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct PanOrbitSettings {
     /// World units per pixel of mouse motion
     pub pan_sensitivity: f32,
@@ -274,5 +275,11 @@ pub fn update_pan_orbit_camera(
             // and place the camera at the desired radius from the center.
             transform.translation = state.center + transform.back() * state.radius;
         }
+    }
+}
+
+pub fn display_pan_orbit_camera_state(cam_query: Query<&PanOrbitState>) {
+    for c in cam_query.iter() {
+        info!("Camera info: {:?}", c);
     }
 }
