@@ -7,22 +7,15 @@ use bevy::{
     },
     log::info,
     math::{EulerRot, Quat, Vec2, Vec3},
-    prelude::{Bundle, Camera3d, Component, DetectChanges, EventReader, KeyCode, Query, Res},
+    prelude::{Camera3d, Component, DetectChanges, EventReader, KeyCode, Query, Res},
     transform::components::Transform,
 };
 
 // Updated & modified version of the "Pan-orbit-camera" from the Bevy Cheat Book (https://bevy-cheatbook.github.io/cookbook/pan-orbit-camera.html).
 
-// Bundle to spawn our custom camera easily
-#[derive(Bundle, Default)]
-pub struct PanOrbitCameraBundle {
-    pub camera: Camera3d,
-    pub state: PanOrbitState,
-    pub settings: PanOrbitSettings,
-}
-
 // The internal state of the pan-orbit controller
-#[derive(Component, Debug)]
+#[derive(Component, Clone, Debug)]
+#[require(Camera3d, PanOrbitSettings)]
 pub struct PanOrbitState {
     pub center: Vec3,
     pub radius: f32,
@@ -43,7 +36,8 @@ impl Default for PanOrbitState {
 }
 
 /// The configuration of the pan-orbit controller
-#[derive(Component, Debug)]
+#[derive(Component, Clone, Debug)]
+// #[require(Camera3d, PanOrbitState)]
 pub struct PanOrbitSettings {
     /// World units per pixel of mouse motion
     pub pan_sensitivity: f32,
