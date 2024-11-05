@@ -74,7 +74,7 @@ impl Default for PanOrbitSettings {
             scroll_line_sensitivity: 16.0, // 1 "line" == 16 "pixels of motion"
             scroll_pixel_sensitivity: 1.0,
             auto_orbit: true,
-            auto_orbit_factor: 0.3,
+            auto_orbit_factor: 0.003,
         }
     }
 }
@@ -262,7 +262,7 @@ pub fn update_pan_orbit_camera(
         // (if we changed anything, or if the pan-orbit
         // controller was just added and thus we are running
         // for the first time and need to initialize)
-        if any_change || state.is_added() {
+        if settings.auto_orbit || any_change || state.is_added() {
             // YXZ Euler Rotation performs yaw/pitch/roll.
             transform.rotation = Quat::from_euler(EulerRot::YXZ, state.yaw, state.pitch, 0.0);
             // To position the camera, get the backward direction vector
