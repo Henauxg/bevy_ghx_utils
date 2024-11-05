@@ -7,7 +7,7 @@ use bevy::{
     },
     log::info,
     math::{EulerRot, Quat, Vec2, Vec3},
-    prelude::{Bundle, Camera3dBundle, Component, DetectChanges, EventReader, KeyCode, Query, Res},
+    prelude::{Bundle, Camera3d, Component, DetectChanges, EventReader, KeyCode, Query, Res},
     transform::components::Transform,
 };
 
@@ -16,7 +16,7 @@ use bevy::{
 // Bundle to spawn our custom camera easily
 #[derive(Bundle, Default)]
 pub struct PanOrbitCameraBundle {
-    pub camera: Camera3dBundle,
+    pub camera: Camera3d,
     pub state: PanOrbitState,
     pub settings: PanOrbitSettings,
 }
