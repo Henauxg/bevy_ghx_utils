@@ -15,9 +15,10 @@ readme = "README.md"
 default = ["pan-orbit-camera"]
 # A 3d pan orbit camera
 pan-orbit-camera = [
-    "bevy/bevy_render",        # Rendering framework core
     "bevy/bevy_core_pipeline", # Provides cameras and other basic render pipeline features
 ]
 
 [dependencies]
-bevy = { version = "0.15.0-rc.1", default-features = false, features = [] }
+bevy = { version = "0.15.0-rc.1", default-features = false, features = [
+    "bevy_render", # Rendering framework core
+] }
