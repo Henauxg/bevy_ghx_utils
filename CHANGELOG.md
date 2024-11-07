@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.4.1 (2024-11-07)
+
+(backport of the 0.5 fix) 
+- fix: auto-orbit updates the transform and has better default values
+
 ## Version 0.4.0 (2024-07-05)
 
 - Update to use Bevy 0.14
