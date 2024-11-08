@@ -37,7 +37,6 @@ impl Default for PanOrbitState {
 
 /// The configuration of the pan-orbit controller
 #[derive(Component, Clone, Debug)]
-// #[require(Camera3d, PanOrbitState)]
 pub struct PanOrbitSettings {
     /// World units per pixel of mouse motion
     pub pan_sensitivity: f32,
