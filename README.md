@@ -20,6 +20,7 @@ Small utilities for the [`Bevy`](https://github.com/bevyengine/bevy) engine, sha
 
 | bevy_ghx_utils | bevy |
 | :------------- | :--- |
+| 0.5            | 0.15 |
 | 0.4            | 0.14 |
 | 0.2-0.3        | 0.13 |
 | 0.1            | 0.12 |

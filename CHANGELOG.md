@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.5.0 (TBD)
+## Version 0.5.0 (2024-03-12)
 
 - Update to use Bevy 0.15
 
